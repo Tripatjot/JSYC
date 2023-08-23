@@ -1,0 +1,13 @@
+**/migrations/**
+!**/migrations
+!**/migrations/__init__.py
+*.log
+*.pot
+*.pyc
+*/*/*/__pycache__/
+*/*/__pycache__/
+*/__pycache__/
+crmdashboard/settings.py
+*/venv/*
+#summary/migrations/
+#users/migrations/
