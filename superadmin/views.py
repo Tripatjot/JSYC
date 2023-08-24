@@ -8,6 +8,7 @@ from datetime import datetime
 import math
 from django.db import transaction
 from django.db.models import F,Q
+from django.core.exceptions import ObjectDoesNotExist
 
 # SuperAdmin- New Leads
 class DistrictLisitng(APIView):
@@ -369,7 +370,7 @@ class TaskDistributionAPIView(APIView):
             tasks_count = int(request.data.get('tasks_count', 0))
             member_ids = request.data.get('member_ids', {})
             if tasks_count <= 0 or not member_ids:
-                return Response({'error': 'Invalid input'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Invalid getut'}, status=status.HTTP_400_BAD_REQUEST)
 
             total_number_of_members = len(member_ids)
             tasks_per_member = math.floor(tasks_count / total_number_of_members)
@@ -504,4 +505,56 @@ class ShowBasicInfotoLAUAgent(APIView):
             result['result']['message'] = str(e)
             return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-           
+class SaveChangesBasicInfo(APIView):
+    def post(self, request):
+        result = {
+            'status': "NOK",
+            'valid': False,
+            'result': {
+                'message': "Data not Found",
+                'data': []
+            }
+        }
+
+        try:
+            get_id = int(request.data.get('id'))
+            reg_instance = Registration.objects.get(id=get_id)
+            master_lead_id = reg_instance.master_id
+
+            update_data = {
+                'sub_source_name': request.data.get('sub_source_name'),
+                'source_contact_no': request.data.get('source_contact_no'),
+                'political_category': request.data.get('political_category'),
+                'name': request.data.get('name'),
+                'age': request.data.get('age'),
+                'gender': request.data.get('gender'),
+                'religion': request.data.get('religion'),
+                'category': request.data.get('category'),
+                'caste': request.data.get('caste'),
+                'district': request.data.get('district'),
+                'assembly': request.data.get('assembly'),
+                'rural_urban': request.data.get('rural_urban'),
+                'block_ulb': request.data.get('block_ulb'),
+                'panchayat_ward': request.data.get('panchayat_ward'),
+                'village_habitation': request.data.get('village_habitation'),
+                'occupation': request.data.get('occupation'),
+                'profile': request.data.get('profile'),
+                'whatsapp_user': request.data.get('whatsapp_user'),
+                'whatsapp_number': request.data.get('whatsapp_number'),
+                'other_caste': request.data.get('other_caste')
+            }
+
+            Master.objects.filter(id=master_lead_id).update(**update_data)
+
+            result['status'] = "OK"
+            result['valid'] = True
+            result['result']['message'] = "Data updated successfully"
+            return Response(result, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            result['result']['message'] = "Registration ID not found"
+            return Response(result, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            result['result']['message'] = "An error occurred"
+            result['result']['error'] = str(e)
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)  
+      

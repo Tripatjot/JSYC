@@ -1,5 +1,5 @@
 from django.urls import path 
-from .views import DistrictLisitng, LAU_Agents, TotalLeadsUnassignedbyLAUAdmin, TaskDistributionAPIView, BlockListing, TotalLeadAssignd, TotalLeadUnassigned, DataSourceListing, UploadingNewLeads, LauAssiginLeadsToAgents, AssignedLeadsforLAUAgents, ShowBasicInfotoLAUAgent
+from .views import DistrictLisitng, LAU_Agents, TotalLeadsUnassignedbyLAUAdmin, TaskDistributionAPIView, BlockListing, TotalLeadAssignd, TotalLeadUnassigned, DataSourceListing, UploadingNewLeads, LauAssiginLeadsToAgents, AssignedLeadsforLAUAgents, ShowBasicInfotoLAUAgent, SaveChangesBasicInfo
 
 urlpatterns = [
     path('get_district/', DistrictLisitng.as_view(), name = 'District'),
@@ -14,4 +14,5 @@ urlpatterns = [
     path('get_TaskDistributionAPIView/', TaskDistributionAPIView.as_view(), name = 'Task Distribution API'),
     path('get_AssignedLeadsforLAUAgents/', AssignedLeadsforLAUAgents.as_view(), name = 'Assigned Leads for LAU Agents'),
     path('get_ShowBasicInfotoLAUAgent/', ShowBasicInfotoLAUAgent.as_view(), name = 'Show Basic Info Lead to LAU Agent'),
+    path('get_SaveChangesBasicInfo/', SaveChangesBasicInfo.as_view(), name = 'Save Changes Basic Info'),
 ]
