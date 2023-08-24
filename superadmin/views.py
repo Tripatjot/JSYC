@@ -7,10 +7,10 @@ import pandas as pd
 from datetime import datetime
 import math
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F,Q
 
 # SuperAdmin- New Leads
-class GetDistrict(APIView):
+class DistrictLisitng(APIView):
     def get(self, request):
         result = {
             'status': "NOK",
@@ -31,7 +31,7 @@ class GetDistrict(APIView):
         else:
             return Response(result, status=status.HTTP_404_NOT_FOUND)
     
-class GetBlock(APIView):
+class BlockListing(APIView):
     def post(self, request):
         result = {
             'status': "NOK",
@@ -56,7 +56,7 @@ class GetBlock(APIView):
         else:
             return Response(result, status=status.HTTP_404_NOT_FOUND)
         
-class GetDataSource(APIView):
+class DataSourceListing(APIView):
     def get(self, request):
         result = {
             'status': "NOK",
@@ -77,8 +77,8 @@ class GetDataSource(APIView):
         else:
             return Response(result, status=status.HTTP_404_NOT_FOUND)
         
-class UploadNewLeads(APIView):
-    def post (self, request):
+class UploadingNewLeads(APIView):
+    def post(self, request):
         result = {
             'status': "NOK",
             'valid': False,
@@ -87,72 +87,85 @@ class UploadNewLeads(APIView):
                 'data': []
             }
         }
-        
-        file = request.data['file']
+
+        file = request.data.get('file')
         if not file:
-            return Response("File link is missing.", status=status.HTTP_400_BAD_REQUEST)
+            return Response("File is missing.", status=status.HTTP_400_BAD_REQUEST)
 
-        content_type = file.content_type.lower()  
-        
-        if content_type in ['csv', 'text/csv']:  # Handle both 'csv' and 'text/csv'
-            print("Reading CSV file...")
-            df = pd.read_csv(file)
-            print("CSV file successfully read.")
-        elif content_type in ['xls', 'xlsx']:
-            print("Reading Excel file...")
-            df = pd.read_excel(file)
-            print("Excel file successfully read.")
-        else:
-            return Response(f"Unsupported file format = '{content_type}'", status=status.HTTP_400_BAD_REQUEST)
+        content_type = file.content_type.lower()
+        allowed_formats = ['csv', 'text/csv', 'xls', 'xlsx']
 
-        try: 
+        if content_type not in allowed_formats:
+            return Response(f"Unsupported file format: {content_type}", status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            if content_type in ['csv', 'text/csv']:
+                print("Reading CSV file...")
+                df = pd.read_csv(file)
+            else:  # Assuming 'xls' or 'xlsx'
+                print("Reading Excel file...")
+                df = pd.read_excel(file)
+            
             data_list = []
             for _, row in df.iterrows():
-                d = {field: row[field] for field in [
+                fields_to_extract = [
                     'uid', 'master_source', 'sub_source_name', 'source_contact_no', 'political_category', 'name', 'contact_number', 'age', 'gender',
                     'religion', 'category', 'caste', 'district', 'assembly', 'block_ulb', 'panchayat_ward', 'village_habitation', 'occupation', 'profile',
                     'whatsapp_user', 'whatsapp_number', 'rural_urban'
-                ]}
+                ]
+                d = {field: row[field] for field in fields_to_extract}
                 data_list.append(Master(**d))
+            
             Master.objects.bulk_create(data_list)
             
-            result['status']="OK"
-            result['valid']=True
+            result['status'] = "OK"
+            result['valid'] = True
             result['result']['message'] = "Data Uploaded successfully"
             return Response(result, status=status.HTTP_200_OK)
 
-        except UnicodeDecodeError as e:
-            result['status']="OK"
-            result['valid']=True
-            result['result']['message'] = str(e)
-            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except pd.errors.ParserError as e:
+            error_message = "Error parsing the file. Please check the file format."
+        except Exception as e:
+            error_message = str(e)
         
-        except Exception as error:
-            result['status']="OK"
-            result['valid']=True
-            result['result']['message'] = str(error)
-            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
-            
-class TotalLeadUnassigned (APIView):
+        result['status'] = "NOK"
+        result['valid'] = False
+        result['result']['message'] = error_message
+        return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
+
+class TotalLeadUnassigned(APIView):
     def get(self, request):
         result = {
             'status': "NOK",
             'valid': False,
             'result': {
-                'message': "Data not Found",
-                'data': []
+                'message': "Data not Found"
             }
         }
 
-        ids_with_new_record_status_zero = Master.objects.filter(new_record_status=0).count()
-        if ids_with_new_record_status_zero:
-            result['status'] = "OK"
-            result['valid'] = True
-            result['result']['message'] = "Data fetched successfully"
-            result['result']['data'] = ids_with_new_record_status_zero
-            return Response(result, status=status.HTTP_200_OK)
-        else:
-            return Response(result, status=status.HTTP_404_NOT_FOUND)
+        get_dist = request.data.get('district')
+        get_block = request.data.get('block')
+        get_source = request.data.get('source')
+        
+        total_data = Registration.objects.filter(lau_consent_agent_id__isnull=True)
+        
+        if get_dist:
+            total_data = total_data.filter(master__district=get_dist)
+        if get_block:
+            total_data = total_data.filter(master__block_ulb=get_block)
+        if get_source:
+            total_data = total_data.filter(master__master_source=get_source)
+        
+        result['count'] = total_data.count()
+        result['data'] = total_data.values(
+            'id', 'master__uid', 'master__name', 'master__district',
+            'master__block_ulb', 'master__master_source'
+        )
+        
+        result['status'] = "okay"
+        result['valid'] = True
+        result['result'] = {"message": "Data fetched successfully"}
+        return Response(result, status=status.HTTP_200_OK)
         
 class TotalLeadAssignd(APIView):
     def post(self, request):
@@ -164,39 +177,41 @@ class TotalLeadAssignd(APIView):
             }
         }
         data = request.data.get('leads')
-        get_district = request.data["district"]
-        get_block = request.data["block"]
-        get_source = request.data["source"]
+        # get_district = request.data.get("district")
+        # get_block = request.data.get("block")
+        # get_source = request.data.get("source")
         
         if not data:
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
         
-        ids_with_new_record_status_zero = Master.objects.filter(new_record_status=0).values_list('id', flat=True)[:int(data)]
-        # if ()
+        ids_with_new_record_status_zero = Master.objects.filter(new_record_status=0).values('id')[:int(data)]
+        # print(ids_with_new_record_status_zero.values('id'))
         registrations_created = []
         for lead_uid in ids_with_new_record_status_zero:
             try:
-                master = Master.objects.get(id=lead_uid)
-                registration = Registration.objects.create(master=master)
-                registrations_created.append(registration)
-                
+                # master_id = lead_uid['id']
+                master = Master.objects.get(id=lead_uid['id'])
+                registration = Registration.objects.create(
+                    master=master,
+                    lau_admin_id='3',
+                    lau_created_date=datetime.now()
+                )
                 master.new_record_status = 1
-                registration.lau_admin_id = '3'
-                registration.lau_created_date = datetime.now() 
-                registration.save()
                 master.save()
+                registrations_created.append(registration)
             except Master.DoesNotExist:
                 pass
-        
         
         result['status'] = "OK"
         result['valid'] = True
         result['result']['message'] = "Registrations created and new_record_status updated successfully"
-        result['result']['data'] = registration.lau_created_date, registration.lau_admin_id, [reg.id for reg in registrations_created]
+        result['result']['data'] = {
+            'lau_created_date': registration.lau_created_date,
+            'lau_admin_id': registration.lau_admin_id,
+            'registration_ids': [reg.id for reg in registrations_created]
+        }
         
-        # result['result']['message'] = ids_with_new_record_status_zero
-        # result['result']['data'] = [reg.id for reg in registrations_created]
-        return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_200_OK)  
     
 # LAU Admin - Assign new Leads 
 class LAU_Agents(APIView):
@@ -220,11 +235,126 @@ class LAU_Agents(APIView):
         result['result']['data'] = agents
         return Response(result, status=status.HTTP_200_OK)
     
-
 class TotalLeadsUnassignedbyLAUAdmin(APIView):
-    def post ():
-        pass    
-    
+    def post (self, request):
+            result = {
+                'status': "NOK",
+                'valid': False,
+                'result': {
+                    'message': "Data not Found",
+                    'data': []
+                }
+            }
+            get_dist = request.data["district"]
+            get_block = request.data["block"]
+            get_source = request.data["source"]
+            all_data = Registration.objects.filter(lau_consent_agent_id__isnull=True)
+            if (get_dist == "" and get_block == "" and get_source == ""):
+                result['count'] = all_data.count()
+                result['data'] = all_data
+            if get_dist != "":
+                all_data = all_data.filter(master__district=get_dist)
+                result['count'] = all_data.count()
+                result['data'] = all_data
+            if get_block != "":
+                all_data = all_data.filter(master__block_ulb=get_block)
+                result['count'] = all_data.count()
+                result['data'] = all_data
+            if get_source != "":
+                all_data = all_data.filter(master__master_source=get_source)
+                result['count'] = all_data.count()
+                result['data'] = all_data
+
+            result['status'] = "okay"
+            result['valid'] = True
+            result['data'] = all_data.values(
+                'id', 'master__uid', 'master__name','master__district', 'master__block_ulb', 'master__master_source'
+                )
+            result['result'] = {"message": "Data fetched successfully"}
+            return Response(result, status=status.HTTP_200_OK)        
+        
+class LauAssiginLeadsToAgents(APIView):
+    def post(self, request):
+        result = {
+            'status': "NOK",
+            'valid': False,
+            'result': {
+                'message': "Unauthorized access",
+                'data': []
+            }
+        }
+
+        consent_agent_ids = request.data.get('agent_ids')
+        get_dist = request.data.get("district")
+        get_block = request.data.get("block")
+        get_source = request.data.get("source")
+        get_leads_count = int(request.data.get("leads_count", 0))
+
+        if not consent_agent_ids:
+            result['result']['message'] = "Please select consent agent"
+            return Response(result, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+        all_data = Registration.objects.filter(lau_consent_agent_id__isnull=True).values(
+            'id', 'master__district', 'master__block_ulb', 'master__master_source'
+        )
+        
+        if len(all_data) < get_leads_count:
+            result['result']['message'] = "Select leads count not greater than Available leads"
+            return Response(result, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+        lead_ids_for_assign = []
+
+        if get_source and not (get_dist or get_block):
+            lead_ids_for_assign = [all_data[i]["id"] for i in range(get_leads_count)]
+
+        elif get_dist and not (get_block or get_source):
+            dist_data = all_data.filter(master__district=get_dist).values()
+            lead_ids_for_assign = [dist_data[i]["id"] for i in range(get_leads_count)]
+
+        elif get_dist and get_block and not get_source:
+            dist_block_data = all_data.filter(master__district=get_dist, master__block_ulb=get_block).values()
+            lead_ids_for_assign = [dist_block_data[i]["id"] for i in range(get_leads_count)]
+
+        elif get_dist and get_block and get_source:
+            dist_block_source_data = all_data.filter(master__district=get_dist, master__block_ulb=get_block, master__master_source=get_source).values()
+            lead_ids_for_assign = [dist_block_source_data[i]["id"] for i in range(get_leads_count)]
+
+        # split_consent_ids = list(map(int, consent_agent_ids.split(",")))
+        # final_list = [lead_ids_for_assign[i:i + len(split_consent_ids)] for i in range(0, len(lead_ids_for_assign), len(split_consent_ids))]
+
+        # for index, leads in enumerate(final_list):
+        #     if leads:
+        #         Registration.objects.filter(id__in=leads).update(lau_consent_agent_id=split_consent_ids[index])
+        
+        split_consent_ids = list(map(int, consent_agent_ids.split(",")))
+        final_list = [lead_ids_for_assign[i:i + len(split_consent_ids)] for i in range(0, len(lead_ids_for_assign), len(split_consent_ids))]
+
+        print("Length of final_list:", len(final_list))
+        print("Length of split_consent_ids:", len(split_consent_ids))
+
+        for index, leads in enumerate(final_list):
+            print("Processing index:", index)
+            if leads:
+                consent_agent_id = split_consent_ids[index] if index < len(split_consent_ids) else None
+                print("Using consent_agent_id:", consent_agent_id)
+                Registration.objects.filter(id__in=leads).update(lau_consent_agent_id=consent_agent_id)
+
+        assigned_leads = Registration.objects.filter(id__in=lead_ids_for_assign, lau_consent_agent_id__isnull=False).values(
+            'id', 'master__uid', 'master__master_source', 'master__sub_source_name', 'master__source_contact_no',
+            'master__political_category', 'master__name', 'master__contact_number', 'master__age', 'master__gender',
+            'master__religion', 'master__category', 'master__caste', 'master__district', 'master__assembly',
+            'master__rural_urban', 'master__block_ulb', 'master__panchayat_ward', 'master__village_habitation',
+            'master__occupation', 'master__profile', 'master__whatsapp_user', 'master__whatsapp_number',
+            'master__new_record_status', 'lau_consent_agent_id'
+        )
+
+        result['status'] = "OK"
+        result['valid'] = True
+        result['result']['message'] = "Leads assigned successfully"
+        result['result']['data'] = assigned_leads
+
+        return Response(result, status=status.HTTP_200_OK)
+
 class TaskDistributionAPIView(APIView):
     def post(self, request, format=None):
         result = {
@@ -253,25 +383,125 @@ class TaskDistributionAPIView(APIView):
                     remaining_tasks -= 1
 
                 distribution_result[id] = member_tasks
-                        
-            ids_to_update = list(Registration.objects.filter(lau_consent_agent_id = 0 , master__new_record_status=1)[:tasks_count])
-            print((ids_to_update))
-
-            i=0
-            for temp in range(0, tasks_count):
+            
+            try:
+                ids_to_update = Registration.objects.filter(lau_consent_agent_id__isnull = True , master__new_record_status=1)[:tasks_count]
+                print(ids_to_update.values('id'))
+                print(len(ids_to_update))
+                
+                if len(ids_to_update) < tasks_count:
+                    result['result']['message'] = "Invalid task/ Provide more Leads"
+                    return Response(result, status=status.HTTP_400_BAD_REQUEST)
+                
+                try :
+                    i = 0
+                    res = []
                     for ids in member_ids:
                         for task in range(0,distribution_result[ids]):
-                            # print(ids)
-                            Registration.objects.filter(id = ids_to_update[i].id).update(lau_consent_agent_id=ids)
-                            print(ids)
-            
-            result['status'] = "OK"
-            result['valid'] = True
-            result['result']['message'] = "Data Fetched Successfully"
-            result['result']['data'] = distribution_result
-            return Response(result, status=status.HTTP_200_OK)
+                            register = Registration.objects.filter(id = ids_to_update[i].id).update(lau_consent_agent_id=ids)
+                            res.append(register)
+                            i= i+1
+
+                    print('register : ', res)
+                except Exception as err:
+                    result['status'] = "NOK"
+                    result['valid'] = False
+                    result['result']['message'] = str(err)
+                    return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    
+                result['status'] = "OK"
+                result['valid'] = True
+                result['result']['message'] = "Data Fetched Successfully"
+                result['result']['data'] = distribution_result
+                return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except Exception as e:
+                result['status'] = "NOK"
+                result['valid'] = False
+                result['result']['message'] = str(e)
+                return Response(result, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)        
         
+# LAU Agents 
+class AssignedLeadsforLAUAgents(APIView):
+    # LAU Agent screen will show all the leads assigned to them.
+    def post(self, request):
+        result = {
+            'status': "NOK",
+            'valid': False,
+            'result': {
+                'message': "Data not Found",
+                'data': []
+            }
+        }
+        try:
+            lau_id = request.data['lau_id']
+            
+            # Retrieve relevant data for the given LAU agent ID
+            data = Registration.objects.filter(
+                lau_consent_agent_id=lau_id
+            ).values(
+                'id', 'master__uid', 'master__name', 'master__contact_number', 'master__district',
+                'lau_consent_call_status', 'lau_consent_call_status_2', 'lau_consent_call_status_3',
+                'lau_consent_lead_status', 'lau_consent_lead_status_2', 'lau_consent_lead_status_3',
+                'lau_consent_followup_date_time', 'lau_consent_followup_date_time_2', 'lau_consent_followup_date_time_3'
+            ).order_by('id')
+            
+            # Update the result dictionary
+            result['status'] = "OK"
+            result['valid'] = True
+            result['result']['message'] = "Data Fetched Successfully"
+            result['result']['data'] = data
+            
+            return Response(result, status=status.HTTP_200_OK)
+        except KeyError:
+            result['result']['message'] = "Missing or invalid input"
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            result['result']['message'] = str(e)
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class ShowBasicInfotoLAUAgent(APIView):
+    def post(self, request):
+        result = {
+            'status': "NOK",
+            'valid': False,
+            'result': {
+                'message': "Data not Found",
+                'data': []
+            }
+        }
+        try:
+            # Retrieve lead ID from the request data
+            lead_id = request.data['lead_id']
+            
+            # Get registration data based on lead ID
+            reg_id = Registration.objects.filter(id=lead_id).values()
+            if not reg_id:
+                result['result']['message'] = "Registration data not found"
+                return Response(result, status=status.HTTP_404_NOT_FOUND)
+            
+            master_lead_id = reg_id[0]["master_id"]
+            
+            # Get master data based on master_lead_id
+            data = Master.objects.filter(id=master_lead_id).values()
+            if not data:
+                result['result']['message'] = "Master data not found"
+                return Response(result, status=status.HTTP_404_NOT_FOUND)
+            
+            # Update the result dictionary
+            result['status'] = "OK"
+            result['valid'] = True
+            result['result']['message'] = "Data Fetched Successfully"
+            result['result']['data'] = list(data)
+            
+            return Response(result, status=status.HTTP_200_OK)
+        except KeyError:
+            result['result']['message'] = "Missing or invalid input"
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            result['result']['message'] = str(e)
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+           
