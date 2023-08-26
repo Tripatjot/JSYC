@@ -5,7 +5,8 @@ from .views import (DistrictLisitng, LAU_Agents, TotalLeadsUnassignedbyLAUAdmin,
                     LauAssiginLeadsToAgents, AssignedLeadsforLAUAgents, ShowBasicInfotoLAUAgent, 
                     SaveChangesBasicInfo, updateWAinfoByLAUAgent_1, updateWAinfoByLAUAgent_2,
                     LauCallStatusListing, LauLeadStatusListing, LAUAdminConsenttoWA,
-                    LAUAdminWAtoSuperAdmin)
+                    LAUAdminWAtoSuperAdmin, ShowBasicInfo_AssignWALeadtoCAUAdmin, AssignWALeadtoCAUAdmin,
+                    ShowBasicInfo_AssignWALeadtoCAUAdmin)
 
 urlpatterns = [
     # SuperAdmin- New Leads
@@ -30,6 +31,13 @@ urlpatterns = [
     path('get_updateWAinfoByLAUAgent_2/', updateWAinfoByLAUAgent_2.as_view(), name = 'Update WA info By LAU Agent_2'),
     path('get_LauCallStatusListing/', LauCallStatusListing.as_view(), name = 'Lau Call Status Listing'),
     path('get_LauLeadStatusListing/', LauLeadStatusListing.as_view(), name = 'Lau Lead Status Listing'),
+    
+    # LAU Admin - WhatsApp Leads
     path('get_LAUAdminConsenttoWA/', LAUAdminConsenttoWA.as_view(), name = 'LAU Admin Consent to WA'),
     path('get_LAUAdminWAtoSuperAdmin/', LAUAdminWAtoSuperAdmin.as_view(), name = 'LAU Admin WA to Super Admin'),
-]
+    
+    # SuperAdmin-CAU Assign
+    path('get_ShowBasicInfo_AssignWALeadtoCAUAdmin/', ShowBasicInfo_AssignWALeadtoCAUAdmin.as_view(), name = 'Show Basic Info_Assign WA Lead to CAU'),
+    path('get_AssignWALeadtoCAUAdmin/', AssignWALeadtoCAUAdmin.as_view(), name = 'Assign WA Lead to CAU'),
+    path('get_block/', BlockListing.as_view(), name = 'Block'),
+]   

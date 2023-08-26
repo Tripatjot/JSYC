@@ -764,7 +764,7 @@ class LauLeadStatusListing(APIView):
             result['result']['message'] = f"An error occurred: {str(e)}"
             return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
         
-# LAU Admin - Assign Leads-Consent      
+# LAU Admin - Assign Leads-Consent to WA   
 class LAUAdminConsenttoWA(APIView):
     def post(self, request):
         result = {
@@ -798,6 +798,7 @@ class LAUAdminConsenttoWA(APIView):
             )
         return Response(result, status=status.HTTP_200_OK) 
         
+# LAU Admin - Leads WA-SuperAdmin
 class LAUAdminWAtoSuperAdmin(APIView):
     def post(self, request):
         result = {
@@ -812,7 +813,10 @@ class LAUAdminWAtoSuperAdmin(APIView):
         get_block = request.data.get('block')
         get_source = request.data.get('source')
         
-        data = Registration.objects.all().filter(lau_consent_agent_id__isnull = False).exclude(Q (lau_lead_status = "All Criteria Fulfilled Consent") | Q (lau_lead_status__isnull = False))
+        data = Registration.objects.all().filter(lau_consent_agent_id__isnull = False).exclude(
+            Q(lau_lead_status = "All Criteria Fulfilled Consent") | 
+            Q (lau_lead_status__isnull = False)
+            )
         if get_district:
             data = data.filter(master__district = get_district)
         if get_block:
@@ -830,4 +834,121 @@ class LAUAdminWAtoSuperAdmin(APIView):
                 'master__master_source','lau_lead_status','wa_group_strength'
             )
         return Response(result, status=status.HTTP_200_OK) 
+        
+#Superadmin-Whatsapp-Lead Consent
+class ShowBasicInfo_AssignWALeadtoCAUAdmin(APIView):
+    def post(self, request):
+        result = {
+            'status': "NOK",
+            'valid': False,
+            'result': {
+                'message': "Data not Found",
+                'data': []
+            }
+        }
+        
+        try:
+            get_district = request.data.get('district')
+            get_block = request.data.get('block')
+            get_source = request.data.get('source')
+            
+            data = Registration.objects.filter(
+                # lau_lead_status = "All Criteria Fulfilled WA",
+                lau_lead_status__isnull = False ).values(
+                    'id', 'master__name', 'master__contact_number', 
+                    'master__district', 'master__block_ulb', 'master__age' )
+            
+            if get_district:
+                data = data.filter(master__district = get_district)
+            if get_block:
+                data = data.filter(master__block_ulb = get_block)
+            if get_source:
+                data = data.filter(master__master_source = get_source)
+            result['status'] = "OK"
+            result['valid'] = True
+            result['result']['message'] = "Data retrieved successfully"
+            result['result']['data'] = list(data)
+            
+            return Response(result, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            result['result']['message'] = e
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+class AssignWALeadtoCAUAdmin(APIView):
+    def post(self, request):
+        result = {
+            'status': "NOK",
+            'valid': False,
+            'result': {
+                'message': "Data not Found",
+                'data': []
+            }
+        }
+        try:
+            get_ids = request.data.get('ids')
+            
+            cau_instance = User.objects.filter(user_role=5, current_status=1).values()
+            cau_id= cau_instance[0]['id']
+            
+            Registration.objects.filter(id__in=get_ids).update(cau_admin_id=cau_id)
+            
+            data = Registration.objects.filter(cau_admin_id = cau_id).values()
+            result['status'] = "OK"
+            result['valid'] = True
+            result['result']['message'] = "Data retrieved successfully"
+            result['result']['data'] = data.values('id')
+            return Response(result, status=status.HTTP_200_OK)
+        except KeyError as e:
+            result['result']['message'] = f"KeyError: {str(e)} not found in request data"
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        except ObjectDoesNotExist:
+            result['result']['message'] = "Object not found"
+            return Response(result, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            result['result']['message'] = f"An error occurred: {str(e)}"
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class ShowBasicInfo_AssignWALeadtoCAUAgent(APIView):
+    def post(self, request):
+        result = {
+            'status': "NOK",
+            'valid': False,
+            'result': {
+                'message': "Data not Found",
+                'data': []
+            }
+        }
+        try:
+            cau_instance = User.objects.filter(user_role=5, current_status=1).values()
+            cau_id= cau_instance[0]['id']
+            all_data = Registration.objects.filter(cau_admin_id = cau_id).values()
+            
+            result['status'] = "OK"
+            result['valid'] = True
+            result['result']['message'] = "Data retrieved successfully"
+            result['result']['data'] = all_data.values('id')
+            return Response(result, status=status.HTTP_200_OK)
+        except KeyError as e:
+            result['result']['message'] = f"KeyError: {str(e)} not found in request data"
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        except ObjectDoesNotExist:
+            result['result']['message'] = "Object not found"
+            return Response(result, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            result['result']['message'] = f"An error occurred: {str(e)}"
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
+        
+        
+         
+
+
+            
+            
+            
+            
+        
+        
         
