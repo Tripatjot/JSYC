@@ -6,7 +6,8 @@ from .views import (DistrictLisitng, LAU_Agents, TotalLeadsUnassignedbyLAUAdmin,
                     SaveChangesBasicInfo, updateWAinfoByLAUAgent_1, updateWAinfoByLAUAgent_2,
                     LauCallStatusListing, LauLeadStatusListing, LAUAdminConsenttoWA,
                     LAUAdminWAtoSuperAdmin, ShowBasicInfo_AssignWALeadtoCAUAdmin, AssignWALeadtoCAUAdmin,
-                    ShowBasicInfo_AssignWALeadtoCAUAdmin)
+                    ShowBasicInfo_AssignWALeadtoCAUAdmin, AssignWALeadtoCAUAgent, CAUAgentsListing,
+                    ShowBasicInfo_CAUAgent,PreviousStatusonCAUAgentLeadform)
 
 urlpatterns = [
     # SuperAdmin- New Leads
@@ -39,5 +40,4 @@ urlpatterns = [
     # SuperAdmin-CAU Assign
     path('get_ShowBasicInfo_AssignWALeadtoCAUAdmin/', ShowBasicInfo_AssignWALeadtoCAUAdmin.as_view(), name = 'Show Basic Info_Assign WA Lead to CAU'),
     path('get_AssignWALeadtoCAUAdmin/', AssignWALeadtoCAUAdmin.as_view(), name = 'Assign WA Lead to CAU'),
-    path('get_block/', BlockListing.as_view(), name = 'Block'),
-]   
+]    
