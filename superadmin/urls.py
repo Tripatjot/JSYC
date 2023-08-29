@@ -5,9 +5,9 @@ from .views import (DistrictLisitng, LAU_Agents, TotalLeadsUnassignedbyLAUAdmin,
                     LauAssiginLeadsToAgents, AssignedLeadsforLAUAgents, ShowBasicInfotoLAUAgent, 
                     SaveChangesBasicInfo, updateWAinfoByLAUAgent_1, updateWAinfoByLAUAgent_2,
                     LauCallStatusListing, LauLeadStatusListing, LAUAdminConsenttoWA,
-                    LAUAdminWAtoSuperAdmin, ShowBasicInfo_AssignWALeadtoCAUAdmin, AssignWALeadtoCAUAdmin,
-                    ShowBasicInfo_AssignWALeadtoCAUAdmin, AssignWALeadtoCAUAgent, CAUAgentsListing,
-                    ShowBasicInfo_CAUAgent,PreviousStatusonCAUAgentLeadform)
+                    ShowBasicInfo_AssignWALeadtoCAUAdmin, AssignWALeadtoCAUAdmin,AssignLeadsConsenttoWA,
+                    AssignWAtoSuperAdmin,Showbasicinfo_LAUAdminWAtoSuperAdmin, ShowBasicInfo_AssignRTOLeadstoCOU,
+                    AssignRTOLeadstoCOU)
 
 urlpatterns = [
     # SuperAdmin- New Leads
@@ -35,9 +35,15 @@ urlpatterns = [
     
     # LAU Admin - WhatsApp Leads
     path('get_LAUAdminConsenttoWA/', LAUAdminConsenttoWA.as_view(), name = 'LAU Admin Consent to WA'),
-    path('get_LAUAdminWAtoSuperAdmin/', LAUAdminWAtoSuperAdmin.as_view(), name = 'LAU Admin WA to Super Admin'),
-    
+    path('get_AssignLeadsConsenttoWA/', AssignLeadsConsenttoWA.as_view(), name = 'Assign Leads Consent to WA'),
+    path('Showbasicinfo_LAUAdminWAtoSuperAdmin/', Showbasicinfo_LAUAdminWAtoSuperAdmin.as_view(), name = 'Show basic info LAU Admin WA to SuperAdmin'),
+    path('get_AssignWAtoSuperAdmin/', AssignWAtoSuperAdmin.as_view(), name = 'Assign WA to SuperAdmin'),
+     
     # SuperAdmin-CAU Assign
     path('get_ShowBasicInfo_AssignWALeadtoCAUAdmin/', ShowBasicInfo_AssignWALeadtoCAUAdmin.as_view(), name = 'Show Basic Info_Assign WA Lead to CAU'),
     path('get_AssignWALeadtoCAUAdmin/', AssignWALeadtoCAUAdmin.as_view(), name = 'Assign WA Lead to CAU'),
+    
+    path('get_ShowBasicInfo_AssignRTOLeadstoCOU/', ShowBasicInfo_AssignRTOLeadstoCOU.as_view(), name = 'Show Basic Info Assign RTO Leads to COU'),
+    path('get_AssignRTOLeadstoCOU/', AssignRTOLeadstoCOU.as_view(), name = 'Assign RTO Leads to COU'),
+    
 ]    

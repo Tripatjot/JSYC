@@ -116,6 +116,7 @@ class AssignWALeadtoCAUAgent(APIView):
                     ).order_by('id')[:agent_id_to_assign]
 
                 temp_ids = list(temp.values_list('id', flat=True))
+                print(temp_ids)
                 Registration.objects.filter(id__in=temp_ids).update(cau_agent_id=agent_id)
                 updated_ids.extend(temp_ids)
                 
@@ -186,7 +187,51 @@ class ShowBasicInfo_CAUAgent(APIView):
         except Exception as e:
             result['result']['message'] = "An error occurred while processing the request."
             return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+ 
+class CAUCallStatusListing(APIView):
+    def get(self, request):
+        result = {
+            'status': "NOK",
+            'valid': False,
+            'result': {
+                'message': "Data not Found",
+                'data': []
+            }
+        }
+        try:
+            call_status = ["Connected", "Call Back Later", "Busy", 
+                           "Call Not answered", "Switched off",
+                           "Number not reachable", "Wrong Number"]
+            result['status'] = "OK"
+            result['valid'] = True
+            result['result']['message'] = "Data retrieved successfully"
+            result['result']['data'] = call_status 
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            result['result']['message'] = f"An error occurred: {str(e)}"
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)      
         
+class CAULeadStatusListing(APIView):
+    def get(self, request):
+        result = {
+            'status': "NOK",
+            'valid': False,
+            'result': {
+                'message': "Data not Found",
+                'data': []
+            }
+        }
+        try:
+            call_status = ["RTO", "Not Interested", "Followup"]
+            result['status'] = "OK"
+            result['valid'] = True
+            result['result']['message'] = "Data retrieved successfully"
+            result['result']['data'] = call_status 
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            result['result']['message'] = f"An error occurred: {str(e)}"
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+         
 class UpdateCAUfieldsbyCAUAgent(APIView):
     def post(self, request):
         result = {
@@ -198,7 +243,7 @@ class UpdateCAUfieldsbyCAUAgent(APIView):
             }
         }
         try: 
-            get_id = request.data.get(id)
+            get_id = request.data.get('id')
             get_club_type = request.data.get('club_type')
             get_total_no_of_members_on_WA = request.data.get('total_no_of_members_on_WA')
             get_members_100_added_on_WA = request.data.get('members_100_added_on_WA')
@@ -333,26 +378,43 @@ class ShowBasicInfo_RTOLeadtoSuperAdmin(APIView):
                 'data': []
             }
         }
-        get_district = request.data.get('district')
-        get_block = request.data.get('block')
-        get_source = request.data.get('source')
         
-        data = Registration.objects.all().filter(cau_admin_id=5, cau_lead_status = "All Criteria Fulfilled" )
-
-        
-        if get_district:
-            data = data.filter(master__district = get_district)
-        if get_block:
-            data = data.filter(master__block_ulb = get_block)
-        if get_source:
-            data = data.filter(master__master_source = get_source)
+        try:
+            get_district = request.data.get('district')
+            get_block = request.data.get('block')
+            get_source = request.data.get('source')
             
-        result['status'] = "OK"
-        result['valid'] = True
-        result['result']['message'] = "Data retrieved successfully"
-        result['result']['data'] = data.values(
-                'id', 'master__name', 'master__contact_number', 
-                'master__district', 'master__block_ulb', 'wa_group_strength' )
+            sa_id = User.objects.filter(user_role_id=5).values('id').first()  # Get the first id value
+            if sa_id is not None:
+                data = Registration.objects.all().filter(cau_admin_id=sa_id['id'],cau_lead_status="RTO")
+#  cau_lead_status="All Criteria Fulfilled"
+                if get_district:
+                    data = data.filter(master__district=get_district)
+                if get_block:
+                    data = data.filter(master__block_ulb=get_block)
+                if get_source:
+                    data = data.filter(master__master_source=get_source)
+
+                print(data)
+                
+                result['status'] = "OK"
+                result['valid'] = True
+                result['result']['message'] = "Data retrieved successfully"
+                result['result']['data'] = data.values(
+                    'id', 'master__name', 'master__contact_number',
+                    'master__district', 'master__block_ulb', 'wa_group_strength')
+                return Response(result, status=status.HTTP_200_OK)
+            else:
+                result['result']['message'] = "User with specified role not found"
+                return Response(result, status=status.HTTP_404_NOT_FOUND)
+        
+        except ObjectDoesNotExist:
+            result['result']['message'] = "No data found"
+            return Response(result, status=status.HTTP_404_NOT_FOUND)
+        
+        except Exception as e:
+            result['result']['message'] = str(e)
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class AssignRTOLeadstoSuperAdmin (APIView):
     def post(self, request):
@@ -365,14 +427,17 @@ class AssignRTOLeadstoSuperAdmin (APIView):
             }
         }        
         try:
-            get_ids = request.data.get('ids')
+            # get_ids = request.data.get('ids')
+            get_lead_ids_str = request.data.get('ids')
+            get_ids = [int(lead_id) for lead_id in get_lead_ids_str.split(',')]
+            
             sa_id = User.objects.filter(user_role_id = 1).values('id') 
             data = Registration.objects.filter(id__in=get_ids).update(cau_sa_status=sa_id, cau_admin_assign_sa_date = datetime.today())
             
             result['status'] = "OK"
             result['valid'] = True
             result['result']['message'] = "Data retrieved successfully"
-            result['result']['data'] = data.values('id')
+            result['result']['data'] = data
             return Response(result, status=status.HTTP_200_OK)
         except KeyError as e:
             result['result']['message'] = f"KeyError: {str(e)} not found in request data"

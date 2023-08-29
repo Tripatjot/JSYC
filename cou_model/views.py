@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status  
-from summary.models import DistrictMapping, DataSource, Master, Registration
+from summary.models import Registration
 from users.models import User
 import pandas as pd
 from datetime import datetime
@@ -20,30 +20,41 @@ class ShowBasicInfo_AssignRTOLeadstoCOUAgent(APIView):
                 'data': []
             }
         }
-        # get_ids = request.data.get('ids') 
-        get_district = request.data.get('district')
-        get_block = request.data.get('block')
-        get_source = request.data.get('source')
-            
-        cou_id = User.objects.filter(user_role_id = 7).values('id')
-        data = Registration.objects.filter(cou_admin_id= cou_id)
         
-        if get_district:
-            data = data.filter(master__district = get_district)
-        if get_block:
-            data = data.filter(master__block_ulb = get_block)
-        if get_source:
-            data = data.filter(master__master_source = get_source)
-        
-        result['status'] = "OK"
-        result['valid'] = True
-        result['result']['message'] = "Data retrieved successfully"
-        result['result']['data'] = data.values(
-                'id', 'master__name', 'master__contact_number', 
-                'master__district', 'master__block_ulb', 'wa_group_strength')
+        try:
+            get_district = request.data.get('district')
+            get_block = request.data.get('block')
+            get_source = request.data.get('source')
             
-        return Response(result, status=status.HTTP_200_OK)
+            cou_id = User.objects.filter(user_role_id=7).values('id').first()  # Get the first id value
+            if cou_id is not None:
+                data = Registration.objects.all().filter(cou_admin_id=cou_id['id'])
+                if get_district:
+                    data = data.filter(master__district=get_district)
+                if get_block:
+                    data = data.filter(master__block_ulb=get_block)
+                if get_source:
+                    data = data.filter(master__master_source=get_source)
 
+                print(data)
+                
+                result['status'] = "OK"
+                result['valid'] = True
+                result['result']['message'] = "Data retrieved successfully"
+                result['result']['data'] = data.values()
+                return Response(result, status=status.HTTP_200_OK)
+            else:
+                result['result']['message'] = "User with specified role not found"
+                return Response(result, status=status.HTTP_404_NOT_FOUND)
+        
+        except ObjectDoesNotExist:
+            result['result']['message'] = "No data found"
+            return Response(result, status=status.HTTP_404_NOT_FOUND)
+        
+        except Exception as e:
+            result['result']['message'] = str(e)
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 class COUAgentListing (APIView):
     def get(self, request):
         result = {
@@ -59,9 +70,7 @@ class COUAgentListing (APIView):
         result['status'] = "OK"
         result['valid'] = True
         result['result']['message'] = "Data retrieved successfully"
-        result['result']['data'] = data.values(
-                    'id', 'master__name', 'master__contact_number', 
-                    'master__district', 'master__block_ulb', 'master__age' )
+        result['result']['data'] = data.values('id','name')
             
         return Response(result, status=status.HTTP_200_OK)              
 
@@ -155,8 +164,8 @@ class ShowBasicInfo_COUAgent(APIView):
                 result['result']['message'] = "Missing 'id' parameter."
                 return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
-            data = Registration.objects.all().filter(cau_agent_id=get_id).exclude(
-                Q (cau_lead_status = "All Criteria Fulfilled"))
+            data = Registration.objects.all().filter(cou_agent_id=get_id).exclude(
+                Q (cou_lead_status = "All Criteria Fulfilled"))
             
             if get_district:
                 data = data.filter(master__district=get_district)
@@ -181,5 +190,3 @@ class ShowBasicInfo_COUAgent(APIView):
             result['result']['message'] = "An error occurred while processing the request."
             return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)     
 
-
-      

@@ -24,4 +24,5 @@ urlpatterns = [
     # path('cou/', include('cou_model.urls')),
     path('superadmin/',include('superadmin.urls')),
     path('cau_model/',include('cau_model.urls')),
+    path('cou_model/',include('cou_model.urls')),
 ]
