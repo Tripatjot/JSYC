@@ -350,73 +350,73 @@ class LauAssiginLeadsToAgents(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class TaskDistributionAPIView(APIView):
-    def post(self, request, format=None):
-        result = {
-            'status': "NOK",
-            'valid': False,
-            'result': {
-                'message': "Data not Found",
-                'data': []
-            }
-        }
-        try:
-            tasks_count = int(request.data.get('tasks_count', 0))
-            member_ids = request.data.get('member_ids', {})
-            if tasks_count <= 0 or not member_ids:
-                return Response({'error': 'Invalid getut'}, status=status.HTTP_400_BAD_REQUEST)
+# class TaskDistributionAPIView(APIView):
+#     def post(self, request, format=None):
+#         result = {
+#             'status': "NOK",
+#             'valid': False,
+#             'result': {
+#                 'message': "Data not Found",
+#                 'data': []
+#             }
+#         }
+#         try:
+#             tasks_count = int(request.data.get('tasks_count', 0))
+#             member_ids = request.data.get('member_ids', {})
+#             if tasks_count <= 0 or not member_ids:
+#                 return Response({'error': 'Invalid getut'}, status=status.HTTP_400_BAD_REQUEST)
 
-            total_number_of_members = len(member_ids)
-            tasks_per_member = math.floor(tasks_count / total_number_of_members)
-            remaining_tasks = tasks_count % total_number_of_members
+#             total_number_of_members = len(member_ids)
+#             tasks_per_member = math.floor(tasks_count / total_number_of_members)
+#             remaining_tasks = tasks_count % total_number_of_members
 
-            distribution_result = {}
-            for id in member_ids:
-                member_tasks = tasks_per_member
-                if remaining_tasks > 0:
-                    member_tasks += 1
-                    remaining_tasks -= 1
+#             distribution_result = {}
+#             for id in member_ids:
+#                 member_tasks = tasks_per_member
+#                 if remaining_tasks > 0:
+#                     member_tasks += 1
+#                     remaining_tasks -= 1
 
-                distribution_result[id] = member_tasks
+#                 distribution_result[id] = member_tasks
             
-            try:
-                ids_to_update = Registration.objects.filter(lau_consent_agent_id__isnull = True , master__new_record_status=1)[:tasks_count]
-                print(ids_to_update.values('id'))
-                print(len(ids_to_update))
+#             try:
+#                 ids_to_update = Registration.objects.filter(lau_consent_agent_id__isnull = True , master__new_record_status=1)[:tasks_count]
+#                 print(ids_to_update.values('id'))
+#                 print(len(ids_to_update))
                 
-                if len(ids_to_update) < tasks_count:
-                    result['result']['message'] = "Invalid task/ Provide more Leads"
-                    return Response(result, status=status.HTTP_400_BAD_REQUEST)
+#                 if len(ids_to_update) < tasks_count:
+#                     result['result']['message'] = "Invalid task/ Provide more Leads"
+#                     return Response(result, status=status.HTTP_400_BAD_REQUEST)
                 
-                try :
-                    i = 0
-                    res = []
-                    for ids in member_ids:
-                        for task in range(0,distribution_result[ids]):
-                            register = Registration.objects.filter(id = ids_to_update[i].id).update(lau_consent_agent_id=ids)
-                            res.append(register)
-                            i= i+1
+#                 try :
+#                     i = 0
+#                     res = []
+#                     for ids in member_ids:
+#                         for task in range(0,distribution_result[ids]):
+#                             register = Registration.objects.filter(id = ids_to_update[i].id).update(lau_consent_agent_id=ids)
+#                             res.append(register)
+#                             i= i+1
 
-                    print('register : ', res)
-                except Exception as err:
-                    result['status'] = "NOK"
-                    result['valid'] = False
-                    result['result']['message'] = str(err)
-                    return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#                     print('register : ', res)
+#                 except Exception as err:
+#                     result['status'] = "NOK"
+#                     result['valid'] = False
+#                     result['result']['message'] = str(err)
+#                     return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                     
-                result['status'] = "OK"
-                result['valid'] = True
-                result['result']['message'] = "Data Fetched Successfully"
-                result['result']['data'] = distribution_result
-                return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            except Exception as e:
-                result['status'] = "NOK"
-                result['valid'] = False
-                result['result']['message'] = str(e)
-                return Response(result, status=status.HTTP_200_OK)
+#                 result['status'] = "OK"
+#                 result['valid'] = True
+#                 result['result']['message'] = "Data Fetched Successfully"
+#                 result['result']['data'] = distribution_result
+#                 return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#             except Exception as e:
+#                 result['status'] = "NOK"
+#                 result['valid'] = False
+#                 result['result']['message'] = str(e)
+#                 return Response(result, status=status.HTTP_200_OK)
 
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)        
+#         except Exception as e:
+#             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)        
         
 # LAU Agents 
 class AssignedLeadsforLAUAgents(APIView):
