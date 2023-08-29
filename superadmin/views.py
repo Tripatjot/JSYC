@@ -173,47 +173,44 @@ class TotalLeadAssignd(APIView):
             'status': "NOK",
             'valid': False,
             'result': {
-                'message': "Data not Found"
+                'message': "Data not Found",
+                'data': []
             }
         }
         get_district = request.data.get('district')
         get_block = request.data.get('block')
         get_source = request.data.get('source')
         
-        lau_id = User.objects.filter(user_role_id = 2).values('id')
+        lau_id = User.objects.filter(user_role_id=2).values('id')
         data = request.data.get('leads')
         
         if not data:
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
         
         ids_with_new_record_status_zero = Master.objects.filter(new_record_status=0).values('id')[:int(data)]
-        # print(ids_with_new_record_status_zero.values('id'))
-        registrations_created = []
-        for lead_uid in ids_with_new_record_status_zero:
-            try:
-                # master_id = lead_uid['id']
-                master = Master.objects.get(id=lead_uid['id'])
-                registration = Registration.objects.create(
-                    master=master,
-                    lau_admin_id=lau_id,
-                    lau_created_date=datetime.now()
-                )
-                master.new_record_status = 1
-                master.save()
-                registrations_created.append(registration)
-            except Master.DoesNotExist:
-                pass
+        master_ids = [item['id'] for item in ids_with_new_record_status_zero]
         
-        result['status'] = "OK"
+        if master_ids:
+            master_objects = Master.objects.filter(id__in=master_ids)
+            registrations_to_create = []
+            
+            for master_obj in master_objects:
+                try:
+                    registration = Registration( master=master_obj, lau_admin_id=lau_id, lau_created_date=datetime.now())
+                    master_obj.new_record_status = 1
+                    registrations_to_create.append(registration)
+                except Master.DoesNotExist:
+                    pass
+            
+            if registrations_to_create:
+                Registration.objects.bulk_create(registrations_to_create)
+                Master.objects.filter(id__in=master_ids).update(new_record_status=1)
+        result['status'] = "okay"
         result['valid'] = True
-        result['result']['message'] = "Registrations created and new_record_status updated successfully"
-        result['result']['data'] = {
-            'lau_created_date': registration.lau_created_date,
-            'lau_admin_id': registration.lau_admin_id,
-            'registration_ids': [reg.id for reg in registrations_created]
-        }
+        result['result'] = {"message": "Registrations created successfully"}
+        result['result']['Updated Ids'] = master_ids
         
-        return Response(result, status=status.HTTP_200_OK)  
+        return Response(result, status=status.HTTP_201_CREATED)
 
 # LAU Admin - Assign new Leads 
 class LAU_Agents(APIView):
@@ -299,34 +296,50 @@ class LauAssiginLeadsToAgents(APIView):
                 distribution_result[id] = member_tasks
             
             try:
-                ids_to_update = Registration.objects.filter(lau_consent_agent_id__isnull = True , master__new_record_status=1)[:tasks_count]
-                print(ids_to_update.values('id'))
-                print(len(ids_to_update))
-                
-                if len(ids_to_update) < tasks_count:
-                    result['result']['message'] = "Invalid task/ Provide more Leads"
-                    return Response(result, status=status.HTTP_400_BAD_REQUEST)
-                
-                try :
-                    i = 0
-                    res = []
-                    for ids in member_ids:
-                        for task in range(0,distribution_result[ids]):
-                            register = Registration.objects.filter(id = ids_to_update[i].id).update(lau_consent_agent_id=ids)
-                            res.append(register)
-                            i= i+1
+                updated_ids = []
+                for agent_id in member_ids:
+                    agent_id_to_assign = distribution_result[agent_id]
+                    temp = Registration.objects.filter(
+                            lau_consent_agent_id__isnull = True , 
+                            master__new_record_status=1
+                        ).order_by('id')[:agent_id_to_assign]
 
-                    print('register : ', res)
-                except Exception as err:
-                    result['status'] = "NOK"
-                    result['valid'] = False
-                    result['result']['message'] = str(err)
-                    return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    temp_ids = list(temp.values_list('id', flat=True))
+                    # print(temp_ids)
+                    Registration.objects.filter(id__in=temp_ids).update(cau_agent_id=agent_id)
+                    updated_ids.extend(temp_ids)
+                
+                
+                # ids_to_update = Registration.objects.filter(lau_consent_agent_id__isnull = True , master__new_record_status=1)[:tasks_count]
+                # Registration.objects.filter(id__in = ids_to_update).update(lau_consent_agent_id=ids)
+                # # print(ids_to_update.values('id'))
+                # # print(len(ids_to_update))
+                
+                # if len(ids_to_update) < tasks_count:
+                #     result['result']['message'] = "Invalid task/ Provide more Leads"
+                #     return Response(result, status=status.HTTP_400_BAD_REQUEST)
+                
+                # try :
+                #     i = 0
+                #     res = []
+                #     for ids in member_ids:
+                #         for task in range(0,distribution_result[ids]):
+                #             register = Registration.objects.filter(id = ids_to_update[i].id).update(lau_consent_agent_id=ids)
+                #             res.append(register)
+                #             i= i+1
+
+                #     print('register : ', res)
+                # except Exception as err:
+                #     result['status'] = "NOK"
+                #     result['valid'] = False
+                #     result['result']['message'] = str(err)
+                #     return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                     
                 result['status'] = "OK"
                 result['valid'] = True
                 result['result']['message'] = "Data Fetched Successfully"
                 result['result']['data'] = distribution_result
+                result['result']['Updated Ids'] = updated_ids
                 return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             except Exception as e:
                 result['status'] = "NOK"
@@ -1017,7 +1030,6 @@ class AssignWALeadtoCAUAdmin(APIView):
             result['result']['message'] = f"An error occurred: {str(e)}"
             return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
    
-
 class ShowBasicInfo_AssignRTOLeadstoCOU (APIView):
     def post(self, request):
         result = {

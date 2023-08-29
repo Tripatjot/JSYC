@@ -9,7 +9,6 @@ import math
 from django.db.models import F,Q
 from django.core.exceptions import ObjectDoesNotExist
 
-
 class ShowBasicInfo_AssignRTOLeadstoCOUAgent(APIView):
     def post(self, request):
         result = {
