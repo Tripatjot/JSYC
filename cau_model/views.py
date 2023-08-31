@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status  
-from summary.models import Registration
+from summary.models import Registration, Master
 from users.models import User
 import pandas as pd
 from datetime import datetime
@@ -20,9 +20,9 @@ class ShowBasicInfo_AssignWALeadtoCAUAgent(APIView):
             }
         }
         try:
-            get_district = request.data.get('district')
-            get_block = request.data.get('block')
-            get_source = request.data.get('source')
+            get_district = request.data['district']
+            get_block = request.data['block']
+            get_source = request.data['source']
             
             cau_instance = User.objects.filter(user_role=5, current_status=1).values()
             cau_id= cau_instance[0]['id']
@@ -119,12 +119,6 @@ class AssignWALeadtoCAUAgent(APIView):
                 print(temp_ids)
                 Registration.objects.filter(id__in=temp_ids).update(cau_agent_id=agent_id)
                 updated_ids.extend(temp_ids)
-                
-            # print(get_lead_ids)
-            # print(get_agent_ids)
-            data = Registration.objects.filter(id__in=get_lead_ids).values('id')
-
-            
             result['status'] = "OK"
             result['valid'] = True
             result['result']['message'] = "Data retrieved successfully"
@@ -449,28 +443,5 @@ class AssignRTOLeadstoSuperAdmin (APIView):
             result['result']['message'] = f"An error occurred: {str(e)}"
             return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
    
-
-
-     
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-         
-
-
-            
-            
-            
-            
-        
-        
-        
+    
+    

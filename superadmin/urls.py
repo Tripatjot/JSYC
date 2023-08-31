@@ -1,6 +1,6 @@
 from django.urls import path 
 from .views import (DistrictLisitng, LAU_Agents, TotalLeadsUnassignedbyLAUAdmin, 
-                    TaskDistributionAPIView, BlockListing, TotalLeadAssignd, 
+                    BlockListing, TotalLeadAssignd, 
                     TotalLeadUnassigned, DataSourceListing, UploadingNewLeads, 
                     LauAssiginLeadsToAgents, AssignedLeadsforLAUAgents, ShowBasicInfotoLAUAgent, 
                     SaveChangesBasicInfo, updateWAinfoByLAUAgent_1, updateWAinfoByLAUAgent_2,
@@ -22,7 +22,6 @@ urlpatterns = [
     path('get_lauagents/', LAU_Agents.as_view(), name = 'LAU Agents'),
     path('get_TotalLeadsUnassignedbyLAUAdmin/', TotalLeadsUnassignedbyLAUAdmin.as_view(), name = 'Total Leads Unassigned by LAU Admin'),
     path('get_lauAssiginLeadsToConsent/', LauAssiginLeadsToAgents.as_view(), name = 'Lau Assigin Leads To Consent'),
-    path('get_TaskDistributionAPIView/', TaskDistributionAPIView.as_view(), name = 'Task Distribution API'),
     
     # LAU Agents - Dashboard
     path('get_AssignedLeadsforLAUAgents/', AssignedLeadsforLAUAgents.as_view(), name = 'Assigned Leads for LAU Agents'),
